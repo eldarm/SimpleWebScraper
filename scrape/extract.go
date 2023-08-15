@@ -1,17 +1,18 @@
 package scrape
 
 import (
+	"bytes"
 	///"fmt"
-	"io"
+	//"io"
 	"log"
 	"golang.org/x/net/html"
 )
 
-// Returns A-links and IMG-links.
-func ExtractLinks(body io.ReadCloser) ([]string, []string) {
+// Returns all A-links and IMG-links from HTML body.
+func ExtractLinks(body []byte) ([]string, []string) {
 	aLinks := make([]string, 0, 200)
 	imgLinks := make([]string, 0, 200)
-	p := html.NewTokenizer(body)
+	p := html.NewTokenizer(bytes.NewReader(body))
 	for {
 		token := p.Next()
 		// log.Println("Ended with error token: ", token)
@@ -33,7 +34,7 @@ func ExtractLinks(body io.ReadCloser) ([]string, []string) {
 					}
 				}
 			case "img":
-				log.Printf("<%s>", token.Data)
+				//log.Printf("<%s>", token.Data)
 				for _, attr := range token.Attr {
 					if attr.Key == "src" {
 						//log.Println("*** ", attr.Val)
