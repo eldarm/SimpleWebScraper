@@ -1,0 +1,89 @@
+package scrape
+
+import (
+	//"errors"
+	"fmt"
+	"log"
+	"regexp"
+	"strings"
+)
+
+var (
+	// reFileName = regexp.MustCompile(`/[^/]+$`)
+	// reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
+	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?([^#\?]]*)?(?:#[^?]*)?(\?.*)?$`)
+	reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?(.*)?$`)
+)
+
+type LUrl struct {
+	url      string // The original url.
+	protocol string // "http" or "hhtps", no colon, no slashes
+	host     string // Host, e.g. ibm.com, no slashes.
+	path     string // Path, the part after the host and before the file. No start or end slash.
+	name     string // The file name, without a leading slash.
+	args     string // The part after '?' in the url, if present.
+	err		 error  // if != nil, only url field is valid.
+}
+
+func ParseUrl(s string) *LUrl {
+	lu := LUrl {
+		url: s,
+	}
+	pp := reUrl.FindAllStringSubmatch(s, -1)
+	if len(pp) < 1 {
+		lu.err = fmt.Errorf("url %q has invalid format, zero submatches", s)
+		return &lu
+	}
+	p := pp[0]
+	log.Printf("%q %v", s, p)
+	if len(p) != 5 {
+		lu.err = fmt.Errorf("url %q has invalid format, parse result: %v", s, p)
+		return &lu
+	}
+	lu.protocol = p[1]
+	lu.host = p[2]
+	lu.path = p[3]
+	if lu.host != "" {
+		// Not a relative path:
+		lu.path = "/" + lu.path
+	}
+	// Cut away anchor, split file name and args.
+	nm, rs, r := strings.Cut(p[4], "#")
+	if !r {
+		nm, rs, _ = strings.Cut(p[4], "?")
+	} else {
+		_, rs, _ = strings.Cut(rs, "?")
+	}
+	lu.name = nm
+	lu.args = rs // If not present, it's "" anyway.
+	return &lu
+}
+
+func (lu *LUrl) Copy() *LUrl {
+	r := *lu
+	return &r
+}
+
+func (lu *LUrl) Merge(o *LUrl) *LUrl {
+	r := lu.Copy()
+	if r.protocol == "" {
+		r.protocol = o.protocol
+	}
+	if r.host == "" {
+		r.host = o.host
+	}
+	if r.path[0] != '/' && o.path != "" {
+			r.path = fmt.Sprintf("%s/%s", o.path, r.path)
+	}
+	return r
+}
+
+func (lu *LUrl) Url(base *LUrl) string {
+	r := lu.Merge(base)
+	return fmt.Sprintf("%s://%s/%s/%s", r.protocol, r.host, r.path, r.name)
+}
+
+func (lu LUrl) String() string {
+	return fmt.Sprintf("%s Err: %v", 
+		strings.Join([]string{lu.url, lu.protocol, lu.host, lu.path, lu.name, lu.args}, " -- "), lu.err)
+}

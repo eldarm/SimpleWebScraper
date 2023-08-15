@@ -1,4 +1,2 @@
-echo "Compiling scrape..."
-go build scrape/*
-echo "Compiling main..."
-go build main/*
+echo "Testing scrape..."
+go test scrape/*

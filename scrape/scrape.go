@@ -40,7 +40,7 @@ func ScrapeSite(urlRoot, localRoot string) {
 			aLinks, imgLinks := ExtractLinks(b)
 			log.Printf("Total links: %d Image links: %d", len(aLinks), len(imgLinks))
 	
-			// Normalize links
+			// Sanitize links
 			aLinks = Filter(url, aLinks)
 			log.Println("Local links: ", len(aLinks))
 			for i, link := range aLinks {

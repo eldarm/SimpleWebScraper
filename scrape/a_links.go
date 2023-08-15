@@ -2,9 +2,9 @@ package scrape
 
 import (
 	"log"
-	"strings"
-	"regexp"
 	"net/url"
+	"regexp"
+	"strings"
 )
 
 var (
@@ -21,7 +21,7 @@ func clean(link string) string {
 	return strings.Trim(reParams.ReplaceAllString(link, ""), "/")
 }
 
-func cleanExternalLink(base, link string) string  {
+func cleanExternalLink(base, link string) string {
 	link, err := url.PathUnescape(link)
 	if err != nil {
 		log.Printf("Malformed URL %q, error: %s", link, err)
@@ -72,4 +72,4 @@ func Filter(url string, links []string) []string {
 		r = append(r, key)
 	}
 	return r
-} 
+}
