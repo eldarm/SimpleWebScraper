@@ -3,53 +3,49 @@ package scrape
 import (
 	"container/list"
 	"log"
-	"regexp"
-	"strings"
-)
-
-var (
-	reFileName = regexp.MustCompile(`/[^/]+$`)
-	reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
+	//"regexp"
+	//"strings"
 )
 
 func ScrapeSite(urlRoot, localRoot string) {
+	base := ParseUrl(urlRoot)
 	log.Printf("Processing stie %q, saving to %q", urlRoot, localRoot)
 	urls := list.New()
-	urls.PushFront(urlRoot);
+	urls.PushFront(urlRoot)
 
 	// Process urls until done.
 	for urls.Len() > 0 {
 		// Get next URL to process.
 		urlElem := urls.Back()
 		urls.Remove(urlElem)
-		url := urlElem.Value.(string)
-		if len(reProtocol.FindAllString(url, -1)) == 0 {
+		url := ParseUrl(urlElem.Value.(string))
+		if len(url.protocol) == 0 || len(url.host) == 0 {
 			// Unnecessary assert.
-			log.Printf("Url %q does not have protocol.", url)
+			log.Printf("Url %q does not have protocol or host: %v", url.url, url)
 		}
 
 		// Extract the file.
-		b, tp, err := GetHttp(url)
+		b, tp, err := GetHttp(url.Url())
 		log.Println(b != nil, tp, err)
 		if err != nil {
-			log.Fatalf("Cannot get the root url %q with error %v", url, err)
+			log.Fatalf("Cannot get the root url %q with error %v", url.Url(), err)
 		}
-	
+
 		if tp == HtmlType { // HTML only processing.
 			// Extract links.
 			aLinks, imgLinks := ExtractLinks(b)
 			log.Printf("Total links: %d Image links: %d", len(aLinks), len(imgLinks))
-	
-			// Sanitize links
-			aLinks = Filter(url, aLinks)
-			log.Println("Local links: ", len(aLinks))
-			for i, link := range aLinks {
-				log.Printf("Link: %d %q", i, link)
-			}
-			for i, link := range imgLinks {
-				log.Printf("Link: %d %q", i, reFileName.FindAllString(strings.Trim(link,"/"), 1))
-			}
-		}
 
+			// Sanitize links
+			aLinksMap := FilterALink(base, url, aLinks)
+			log.Println("Local links: ", len(*aLinksMap))
+			imgLinksMap := NormalizeImgLink(base, url, imgLinks)
+			// for link, ori := range *aLinksMap {
+			// 	log.Printf("A' link: %q %q", link, ori)
+			// }
+			// for link, file := range *imgLinksMap {
+			// 	log.Printf("Image link: %q %q", link, file)
+			// }
+		}
 	}
 }

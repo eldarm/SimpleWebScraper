@@ -3,7 +3,7 @@ package scrape
 import (
 	//"errors"
 	"fmt"
-	"log"
+	//"log"
 	"regexp"
 	"strings"
 )
@@ -12,7 +12,8 @@ var (
 	// reFileName = regexp.MustCompile(`/[^/]+$`)
 	// reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
 	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?([^#\?]]*)?(?:#[^?]*)?(\?.*)?$`)
-	reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?(.*)?$`)
+	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:/(.*)/)?(.*)?$`)
+	reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:(/?.*)/)?(.*)?$`)
 )
 
 type LUrl struct {
@@ -22,11 +23,11 @@ type LUrl struct {
 	path     string // Path, the part after the host and before the file. No start or end slash.
 	name     string // The file name, without a leading slash.
 	args     string // The part after '?' in the url, if present.
-	err		 error  // if != nil, only url field is valid.
+	err      error  // if != nil, only url field is valid.
 }
 
 func ParseUrl(s string) *LUrl {
-	lu := LUrl {
+	lu := LUrl{
 		url: s,
 	}
 	pp := reUrl.FindAllStringSubmatch(s, -1)
@@ -35,7 +36,7 @@ func ParseUrl(s string) *LUrl {
 		return &lu
 	}
 	p := pp[0]
-	log.Printf("%q %v", s, p)
+	// log.Printf("%q %v", s, p)
 	if len(p) != 5 {
 		lu.err = fmt.Errorf("url %q has invalid format, parse result: %v", s, p)
 		return &lu
@@ -43,10 +44,10 @@ func ParseUrl(s string) *LUrl {
 	lu.protocol = p[1]
 	lu.host = p[2]
 	lu.path = p[3]
-	if lu.host != "" {
-		// Not a relative path:
-		lu.path = "/" + lu.path
-	}
+	// if lu.host != "" { // || s[0] == '/' {
+	// 	// Not a relative path:
+	// 	lu.path = "/" + lu.path
+	// }
 	// Cut away anchor, split file name and args.
 	nm, rs, r := strings.Cut(p[4], "#")
 	if !r {
@@ -73,17 +74,15 @@ func (lu *LUrl) Merge(o *LUrl) *LUrl {
 		r.host = o.host
 	}
 	if r.path[0] != '/' && o.path != "" {
-			r.path = fmt.Sprintf("%s/%s", o.path, r.path)
+		r.path = fmt.Sprintf("%s/%s", o.path, r.path)
 	}
 	return r
 }
 
-func (lu *LUrl) Url(base *LUrl) string {
-	r := lu.Merge(base)
-	return fmt.Sprintf("%s://%s/%s/%s", r.protocol, r.host, r.path, r.name)
+func (lu *LUrl) Url() string {
+	return fmt.Sprintf("%s://%s/%s/%s", lu.protocol, lu.host, lu.path, lu.name)
 }
-
 func (lu LUrl) String() string {
-	return fmt.Sprintf("%s Err: %v", 
+	return fmt.Sprintf("%s Err: %v",
 		strings.Join([]string{lu.url, lu.protocol, lu.host, lu.path, lu.name, lu.args}, " -- "), lu.err)
 }
