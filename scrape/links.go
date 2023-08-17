@@ -1,48 +1,44 @@
 package scrape
 
 import (
-	"log"
+	//"log"
 	//"net/url"
-	"regexp"
+	//"regexp"
 	"strings"
 )
 
-var (
-	reFileName = regexp.MustCompile(`/[^/]+$`)
-	//reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
-)
-
-func FilterALink(base, page *LUrl, links []string) *map[string]string {
-	res := make(map[string]string, len(links))
+func FilterALink(base, page *LUrl, links []string) *map[string]*LUrl {
+	res := make(map[string]*LUrl, len(links))
 	for _, link := range links {
 		l := ParseUrl(link)
 		if l.host == "" || l.protocol == "" { // They are always together empty or not.
 			// Local link.
-			if l.path[0] == '/' && !strings.HasPrefix(l.path, base.path) {
+			if l.path != "" && l.path[0] == '/' && !strings.HasPrefix(l.path, base.path) {
 				// With absolute path.
-				log.Printf("Sanitized %q, path differs from base %q.", link, base.Url())
+				//log.Printf("Sanitized %q, path differs from base %q.", link, base.Url())
 				continue
 			}
-			r := l.Merge(page)
-			res[r.Url()] = link
+			l := l.Merge(page)
+			res[l.Url()] = l
 			continue
 		}
 		// Full link.
 		if l.host != base.host {
-			log.Printf("Sanitized %q, host differs from %q.", link, base)
+			//log.Printf("Sanitized %q, host differs from %q.", link, base)
 			continue
 		}
 		if !strings.HasPrefix(l.path, base.path) {
 			// With absolute path.
-			log.Printf("Sanitized %q, path differs from base %q.", link, base.Url())
+			//log.Printf("Sanitized %q, path differs from base %q.", link, base.Url())
 			continue
 		}
+		res[l.Url()] = l
 	}
 	return &res
 }
 
-func NormalizeImgLink(base, page *LUrl, links []string) *map[string]string {
-	res := make(map[string]string, len(links))
+func NormalizeImgLink(base, page *LUrl, links []string) *map[string]*LUrl {
+	res := make(map[string]*LUrl, len(links))
 	for _, link := range links {
 		l := ParseUrl(link)
 		if l.protocol == "" || l.host == "" {
@@ -52,8 +48,7 @@ func NormalizeImgLink(base, page *LUrl, links []string) *map[string]string {
 				l = l.Merge(page)
 			}
 		}
-		fName := reFileName.FindAllString(strings.Trim(link, "/"), 1)[0]
-		res[l.Url()] = fName
+		res[l.Url()] = l
 	}
 	return &res
 }

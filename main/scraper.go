@@ -20,4 +20,3 @@ func main() {
 
 	scrp.ScrapeSite(os.Args[1], os.Args[2])
 }
-

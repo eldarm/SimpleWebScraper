@@ -61,8 +61,16 @@ func TestEmptyQueuePush(t *testing.T) {
 			args:     "",
 			err:      nil,
 		},
+		LUrl{
+			url:      "//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgLcLAk7mDanogb2rGgJ-6QgDeRUHJ3hjFBLFynCpD_KrbdYo2Wk6a7hsTSHAIu7mQ2sctE3LKbVx_bC8p-dBKr-ynMqGhgykeqOYBrnjKugAbC32PF6grqN2JaPHKmfQ/s220/150px-Scrat.jpg",
+			protocol: "http",
+			host:     "blogger.googleusercontent.com",
+			path:     "/img/b/R29vZ2xl/AVvXsEgLcLAk7mDanogb2rGgJ-6QgDeRUHJ3hjFBLFynCpD_KrbdYo2Wk6a7hsTSHAIu7mQ2sctE3LKbVx_bC8p-dBKr-ynMqGhgykeqOYBrnjKugAbC32PF6grqN2JaPHKmfQ/s220",
+			name:     "150px-Scrat.jpg",
+			args:     "",
+			err:      nil,
+		},
 	}
-
 	for _, test := range tests {
 		r := ParseUrl(test.url)
 		if r.String() != test.String() {

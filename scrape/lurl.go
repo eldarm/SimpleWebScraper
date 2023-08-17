@@ -3,9 +3,13 @@ package scrape
 import (
 	//"errors"
 	"fmt"
-	//"log"
+	"log"
 	"regexp"
 	"strings"
+)
+
+const (
+	DefaultPage = "index.html"
 )
 
 var (
@@ -13,7 +17,8 @@ var (
 	// reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
 	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?([^#\?]]*)?(?:#[^?]*)?(\?.*)?$`)
 	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:/(.*)/)?(.*)?$`)
-	reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:(/?.*)/)?(.*)?$`)
+	reUrl    = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:(/?.*)/)?(.*)?$`)
+	reSuffix = regexp.MustCompile(`\.[\w\d_-]*$`)
 )
 
 type LUrl struct {
@@ -23,12 +28,17 @@ type LUrl struct {
 	path     string // Path, the part after the host and before the file. No start or end slash.
 	name     string // The file name, without a leading slash.
 	args     string // The part after '?' in the url, if present.
+	suffix   string // Suggested suffix, if any
 	err      error  // if != nil, only url field is valid.
 }
 
 func ParseUrl(s string) *LUrl {
 	lu := LUrl{
 		url: s,
+	}
+	if strings.HasPrefix(s, "//") {
+		// Google has a bug with "//" but no "http[s]:"
+		s = "http:" + s
 	}
 	pp := reUrl.FindAllStringSubmatch(s, -1)
 	if len(pp) < 1 {
@@ -73,16 +83,36 @@ func (lu *LUrl) Merge(o *LUrl) *LUrl {
 	if r.host == "" {
 		r.host = o.host
 	}
-	if r.path[0] != '/' && o.path != "" {
+	if r.path != "" && r.path[0] != '/' && o.path != "" {
 		r.path = fmt.Sprintf("%s/%s", o.path, r.path)
 	}
 	return r
 }
 
 func (lu *LUrl) Url() string {
-	return fmt.Sprintf("%s://%s/%s/%s", lu.protocol, lu.host, lu.path, lu.name)
+	return fmt.Sprintf("%s://%s/%s/%s", lu.protocol, strings.Trim(lu.host, "/"), strings.Trim(lu.path, "/"), lu.name)
 }
+
 func (lu LUrl) String() string {
 	return fmt.Sprintf("%s Err: %v",
 		strings.Join([]string{lu.url, lu.protocol, lu.host, lu.path, lu.name, lu.args}, " -- "), lu.err)
+}
+
+// Convert URl to a relative file path with file name to save.
+func (lu LUrl) FileName() string {
+	if lu.host == "" {
+		log.Fatalf("No host field for %q url aka %q.", lu.url, lu.Url())
+	}
+	name := lu.name
+	if name == "" {
+		name = DefaultPage
+	}
+	sfx := ""
+	if len(reSuffix.Find([]byte(name))) == 0 {
+		sfx = lu.suffix
+	}
+	if lu.path == "" {
+		return fmt.Sprintf("%s/%s%s", lu.host, name, sfx)
+	}
+	return fmt.Sprintf("%s/%s/%s%s", strings.Trim(lu.host, "/"), strings.Trim(lu.path, "/"), name, sfx)
 }

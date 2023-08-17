@@ -5,7 +5,7 @@ import (
 	///"fmt"
 	//"io"
 	"golang.org/x/net/html"
-	"log"
+	//"log"
 )
 
 // Returns all A-links and IMG-links from HTML body.
@@ -19,7 +19,7 @@ func ExtractLinks(body []byte) ([]string, []string) {
 		switch token {
 		case html.ErrorToken:
 			//todo: links list shoudn't contain duplicates
-			log.Println("Token: ", token)
+			//log.Println("Token: ", token)
 			return aLinks, imgLinks
 		case html.StartTagToken, html.EndTagToken, html.SelfClosingTagToken:
 			//st := token
