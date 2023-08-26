@@ -42,7 +42,7 @@ func NormalizeImgLink(base, page *LUrl, links []string) *map[string]*LUrl {
 	for _, link := range links {
 		l := ParseUrl(link)
 		if l.protocol == "" || l.host == "" {
-			if l.path[0] == '/' {
+			if l.path != "" && l.path[0] == '/' {
 				l = l.Merge(base)
 			} else {
 				l = l.Merge(page)

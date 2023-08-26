@@ -2,10 +2,13 @@ package scrape
 
 import (
 	//"errors"
+	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"regexp"
 	"strings"
+
 )
 
 const (
@@ -13,11 +16,13 @@ const (
 )
 
 var (
-	// reFileName = regexp.MustCompile(`/[^/]+$`)
-	// reProtocol = regexp.MustCompile(`^(?i)http[s]?://`)
-	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*)/)?(?:(.*)/)?([^#\?]]*)?(?:#[^?]*)?(\?.*)?$`)
-	//reUrl = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:/(.*)/)?(.*)?$`)
-	reUrl    = regexp.MustCompile(`(?i:(https?)://([^/]*))?(?:(/?.*)/)?(.*)?$`)
+	allowArgsFlag = flag.String("allow_args", "page", "process pages with this arg, e.g. q.com/index.php?page=5")
+	allowedArgs   = make(map[string]struct{})
+)
+
+var (
+  //reUrl    = regexp.MustCompile(`(?i:(https?)://([^/#\?]*))?(?:(/?.*)/)?(.*)?$`)
+	reUrl    = regexp.MustCompile(`(?i:(https?)://([^/#\?]*))?(?:(/?[^#\?]*)/)?(.*)?$`)
 	reSuffix = regexp.MustCompile(`\.[\w\d_-]*$`)
 )
 
@@ -27,19 +32,38 @@ type LUrl struct {
 	host     string // Host, e.g. ibm.com, no slashes.
 	path     string // Path, the part after the host and before the file. No start or end slash.
 	name     string // The file name, without a leading slash.
-	args     string // The part after '?' in the url, if present.
+	args     string // The part after '?' in the url, if present. Sanitized using allowArgsFlag.
 	suffix   string // Suggested suffix, if any
 	err      error  // if != nil, only url field is valid.
 }
 
+func parseAllowedArgs() {
+	if len(*allowArgsFlag) == 0 || len(allowedArgs) > 0 {
+		return
+	}
+	as := strings.Split(*allowArgsFlag, ",")
+	for _, a := range as {
+		allowedArgs[a] = struct{}{}
+	}
+}
+
 func ParseUrl(s string) *LUrl {
+	parseAllowedArgs() // Not thread safe.
+	
 	lu := LUrl{
 		url: s,
 	}
+
+	if st, err := url.PathUnescape(s); err != nil {
+		log.Println("Unescape error in path:", s, err)
+	} else {
+		s = st
+	}
 	if strings.HasPrefix(s, "//") {
-		// Google has a bug with "//" but no "http[s]:"
+		// Google sites has a bug with "//" but no "http[s]:"
 		s = "http:" + s
 	}
+	s = strings.Replace(s, "index.php/", "", 1) // Some CMS occasionally use index.php as a folder and put it into URL.
 	pp := reUrl.FindAllStringSubmatch(s, -1)
 	if len(pp) < 1 {
 		lu.err = fmt.Errorf("url %q has invalid format, zero submatches", s)
@@ -53,20 +77,35 @@ func ParseUrl(s string) *LUrl {
 	}
 	lu.protocol = p[1]
 	lu.host = p[2]
-	lu.path = p[3]
-	// if lu.host != "" { // || s[0] == '/' {
-	// 	// Not a relative path:
-	// 	lu.path = "/" + lu.path
-	// }
-	// Cut away anchor, split file name and args.
-	nm, rs, r := strings.Cut(p[4], "#")
-	if !r {
-		nm, rs, _ = strings.Cut(p[4], "?")
-	} else {
-		_, rs, _ = strings.Cut(rs, "?")
+	if lu.host != strings.Trim(lu.host, "/") {
+		log.Panicf("Host contains slashes %s", lu.host)
 	}
+	lu.path = p[3]
+	if lu.path != "" && lu.path[len(lu.path)-1] == '/' {
+		log.Panicf(" Path ends with a slash %s", lu.path)
+	}
+
+	nm, rs, _ := strings.Cut(p[4], "?") // Empty rs is ok.
+	nm, _, _ = strings.Cut(nm, "#") // If not found, that's good.
 	lu.name = nm
-	lu.args = rs // If not present, it's "" anyway.
+
+	// Remove disallowed args.
+	args := strings.Split(rs, "&") // If not present, it's "" anyway.
+	argsSanitized := make([]string, 0, len(args))
+	for _, arg := range args {
+		a, _, _ := strings.Cut(arg, "=")
+		// log.Println("*** ", arg, a)
+		if _, ok := allowedArgs[a]; ok {
+			argsSanitized = append(argsSanitized, arg)
+			// log.Println("+++ ", argsSanitized)
+		}
+	}
+	if len(argsSanitized) > 0 {
+		lu.args = "?" + strings.Join(argsSanitized, "&")
+		//log.Println("=== ", lu.args)
+	}
+
+	//log.Println(lu.Url())
 	return &lu
 }
 
@@ -90,7 +129,30 @@ func (lu *LUrl) Merge(o *LUrl) *LUrl {
 }
 
 func (lu *LUrl) Url() string {
-	return fmt.Sprintf("%s://%s/%s/%s", lu.protocol, strings.Trim(lu.host, "/"), strings.Trim(lu.path, "/"), lu.name)
+	r := ""
+	if lu.protocol != "" {
+		r = lu.protocol + "://"
+	}
+	if lu.host != "" {
+		r += strings.Trim(lu.host, "/")
+	}
+	if lu.path != "" {
+		switch r {
+		case "":
+			r += lu.path
+		default:
+			r += "/" + strings.Trim(lu.path, "/")
+		}
+	}
+	n := strings.Trim(lu.name, "/")
+	if n != "" {
+		if r != "" {
+			r+= "/"
+		}
+		r += n
+	}
+	// return fmt.Sprintf("%s%s/%s%s", r, strings.Trim(lu.path, "/"), lu.name, lu.args)
+	return fmt.Sprintf("%s%s", r, lu.args)
 }
 
 func (lu LUrl) String() string {

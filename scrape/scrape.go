@@ -7,12 +7,11 @@ import (
 	"log"
 	"os"
 	"path"
-	//"regexp"
-	//"strings"
 )
 
 var (
-	maxLinks = flag.Int("max_links", 60000, "maximum number of unique links to rpocess (both A and IMG)"))
+	maxLinks = flag.Int("max_links", 50000, "maximum number of unique links to rpocess (both A and IMG)")
+)
 
 func ScrapeSite(urlRoot, localRoot string) {
 	base := ParseUrl(urlRoot)
@@ -31,6 +30,7 @@ func ScrapeSite(urlRoot, localRoot string) {
 		urlElem := urls.Back()
 		urls.Remove(urlElem)
 		urlString := urlElem.Value.(string)
+		//log.Println("Processing ", urlString)
 		processed[urlString] = "Ok"
 		url := ParseUrl(urlString)
 		allLinks[urlString] = url
@@ -77,13 +77,12 @@ func ScrapeSite(urlRoot, localRoot string) {
 					allLinks[link] = file
 				}
 			}
-			log.Printf("Queue size: %d, new A links: %d, new IMG links: %d",
-					   urls.Len(), len(*aLinksMap), len(*imgLinksMap))
+			log.Printf("Queue size: %d, <A>: %d, <IMG>: %d, %s is done.",
+				urls.Len(), len(*aLinksMap), len(*imgLinksMap), urlString)
 		}
 
 		// Save the file
 		{
-			//err := error(nil)
 			url := allLinks[urlString]
 			// Need a path
 			file := path.Join(localRoot, url.FileName())
@@ -110,18 +109,18 @@ func ScrapeSite(urlRoot, localRoot string) {
 	}
 	// Write stats.
 	{
-	f, err := os.Create(path.Join(localRoot, "all_files_stats.txt"))
-	if err != nil {
-		log.Printf("Stats file open failure %v.", err)
-	}
-	defer f.Close()
-	for file, e := range processed {
-		_, err := f.WriteString(fmt.Sprintf("%s %s\n", file, e))
+		f, err := os.Create(path.Join(localRoot, "all_files_stats.txt"))
 		if err != nil {
-			log.Printf("Stats file write failure %v.", err)
+			log.Printf("Stats file open failure %v.", err)
+		}
+		defer f.Close()
+		for file, e := range processed {
+			_, err := f.WriteString(fmt.Sprintf("%s %s\n", file, e))
+			if err != nil {
+				log.Printf("Stats file write failure %v.", err)
+			}
 		}
 	}
-}
 
 	// Write all found links.
 	{
@@ -130,17 +129,11 @@ func ScrapeSite(urlRoot, localRoot string) {
 			log.Printf("Links file open failure %v.", err)
 		}
 		defer f.Close()
-		for urls.Len() >0  {
-			url := urls.Front()
-			urls.Remove(url) 
-			_, err := f.WriteString(fmt.Sprintf("%s\n", url.Value.(string)))
+		for url, fn := range allLinks {
+			_, err := f.WriteString(fmt.Sprintf("%s %s\n", url, fn))
 			if err != nil {
 				log.Printf("Link file write failure %v.", err)
 			}
 		}
 	}
-	
-	// for link, url := range allLinks {
-	// 		log.Printf("***\nlink: %q\nfile: %q\n", link, url.FileName())
-	// }
 }
