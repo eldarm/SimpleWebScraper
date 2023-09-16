@@ -11,6 +11,11 @@ import (
 
 var (
 	maxLinks = flag.Int("max_links", 50000, "maximum number of unique links to rpocess (both A and IMG)")
+
+	blackList = map[string]bool {
+		"emarketer.com": true,
+		"www.emarketer.com": true,
+	}
 )
 
 func ScrapeSite(urlRoot, localRoot string) {
@@ -33,6 +38,10 @@ func ScrapeSite(urlRoot, localRoot string) {
 		//log.Println("Processing ", urlString)
 		processed[urlString] = "Ok"
 		url := ParseUrl(urlString)
+		if _, ok := blackList[url.host]; ok {
+			log.Printf("Blacklist domain in url %q, skipping.", urlString)
+			continue
+		}
 		allLinks[urlString] = url
 		if len(url.protocol) == 0 || len(url.host) == 0 {
 			// Unnecessary assert.

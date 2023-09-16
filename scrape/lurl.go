@@ -35,6 +35,7 @@ type LUrl struct {
 	args     string // The part after '?' in the url, if present. Sanitized using allowArgsFlag.
 	suffix   string // Suggested suffix, if any
 	err      error  // if != nil, only url field is valid.
+	normalized bool // Normalized was called after the latest change
 }
 
 func parseAllowedArgs() {
@@ -52,6 +53,7 @@ func ParseUrl(s string) *LUrl {
 	
 	lu := LUrl{
 		url: s,
+		normalized: false,
 	}
 
 	if st, err := url.PathUnescape(s); err != nil {
@@ -125,10 +127,37 @@ func (lu *LUrl) Merge(o *LUrl) *LUrl {
 	if r.path != "" && r.path[0] != '/' && o.path != "" {
 		r.path = fmt.Sprintf("%s/%s", o.path, r.path)
 	}
+	lu.normalized = false
 	return r
 }
 
+func (lu *LUrl) Normalize() {
+	if lu.normalized {
+		return
+	}
+	c := 0
+	parts := strings.Split(lu.path, "/")
+	// log.Printf("%q -> %v", lu.path, parts)
+	for i, p := range parts {
+		if p == "." {
+			continue
+		}
+		if p == ".." {
+			if c > 1 || (c == 1 && parts[0] != "") {
+				c--
+			}
+			continue
+		}
+		parts[c] = parts[i]
+		c++
+	}
+	lu.path = strings.Join(parts[:c], "/")
+	// log.Println(lu.path)
+	lu.normalized = true
+}
+
 func (lu *LUrl) Url() string {
+	lu.Normalize()
 	r := ""
 	if lu.protocol != "" {
 		r = lu.protocol + "://"
@@ -156,8 +185,8 @@ func (lu *LUrl) Url() string {
 }
 
 func (lu LUrl) String() string {
-	return fmt.Sprintf("%s Err: %v",
-		strings.Join([]string{lu.url, lu.protocol, lu.host, lu.path, lu.name, lu.args}, " -- "), lu.err)
+	return fmt.Sprintf("u: %q p: %q h: %q p: %q n: %q a: %q Err: %v",
+		lu.url, lu.protocol, lu.host, lu.path, lu.name, lu.args, lu.err)
 }
 
 // Convert URl to a relative file path with file name to save.

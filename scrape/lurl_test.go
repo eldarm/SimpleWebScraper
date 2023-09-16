@@ -11,6 +11,7 @@ func TestParsing(t *testing.T) {
 		u  LUrl
 	}
 	tests := []test{
+		// #0
 		test{
 			eu: "https://coo.com/abc/def/ghi.html",
 			u: LUrl{
@@ -23,6 +24,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #1
 		test{
 			eu: "http://coo.com/abc/def/ghi.html",
 			u: LUrl{
@@ -35,6 +37,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #2
 		test{
 			eu: "/abc/def/ghi.html",
 			u: LUrl{
@@ -47,6 +50,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #3
 		test{
 			eu: "abc/def/ghi.html",
 			u: LUrl{
@@ -59,6 +63,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #4
 		test{
 			eu: "https://management4cannibals.blogspot.com",
 			u: LUrl{
@@ -71,6 +76,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #5
 		test{
 			eu: "https://management4cannibals.blogspot.com?page=5", // "/" after host?
 			u: LUrl{
@@ -83,6 +89,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #6
 		test{
 			eu: "http://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgLcLAk7mDanogb2rGgJ-6QgDeRUHJ3hjFBLFynCpD_KrbdYo2Wk6a7hsTSHAIu7mQ2sctE3LKbVx_bC8p-dBKr-ynMqGhgykeqOYBrnjKugAbC32PF6grqN2JaPHKmfQ/s220/150px-Scrat.jpg",
 			u: LUrl{
@@ -95,6 +102,7 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
+		// #7
 		test{
 			eu: "http://eldar.com/user/login",
 			u: LUrl{
@@ -107,16 +115,121 @@ func TestParsing(t *testing.T) {
 				err:      nil,
 			},
 		},
-		
+		// #8
+		test{
+			eu: "/user/bob/cv.htm",
+			u: LUrl{
+				url:      "/./user/bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "/user/bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #9
+		test{
+			eu: "/user/bob/cv.htm",
+			u: LUrl{
+				url:      "/../user/bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "/user/bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #10
+		test{
+			eu: "/user/bob/cv.htm",
+			u: LUrl{
+				url:      "/user/./bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "/user/bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #11
+		test{
+			eu: "/bob/cv.htm",
+			u: LUrl{
+				url:      "/user/../bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "/bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #12
+		test{
+			eu: "bob/cv.htm",
+			u: LUrl{
+				url:      "./bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #13
+		test{
+			eu: "bob/cv.htm",
+			u: LUrl{
+				url:      "../bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #14
+		test{
+			eu: "bob/cv.htm",
+			u: LUrl{
+				url:      "user/../bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+		// #15
+		test{
+			eu: "user/bob/cv.htm",
+			u: LUrl{
+				url:      "user/bob/cv.htm",
+				protocol: "",
+				host:     "",
+				path:     "user/bob",
+				name:     "cv.htm",
+				args:     "",
+				err:      nil,
+			},
+		},
+
+
 	}
 	for i, test := range tests {
 		r := ParseUrl(test.u.url)
-		if r.String() != test.u.String() {
-			t.Errorf("Parse error in test %d:\ne: %v\nr: %v", i, test.u.String(), r.String())
-		}
-		u := test.u.Url()
+		u := r.Url()
 		if u != test.eu {
 			t.Errorf("Url() error in test %d Expected URL to read is %q, actual %q", i, test.eu, u)
+		}
+		if r.String() != test.u.String() {
+			t.Errorf("Parse error in test %d:\ne: %v\nr: %v", i, test.u.String(), r.String())
 		}
 	}
 }
